@@ -1,0 +1,10 @@
+node_modules/
+.DS_Store
+*.log
+
+# Local eval runs and audit output
+evals/results/
+*-workspace/
+leads.json
+/findings.json
+/REPORT.md
