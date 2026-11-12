@@ -1,0 +1,392 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rn-security-audit/1",
+  "title": "React Native security audit findings",
+  "description": "Shape of findings.json. scripts/validate-findings.mjs enforces this plus checks a schema cannot express: cited files and lines exist in the audited project, all nine domains are covered, and no unredacted credential is present.",
+  "type": "object",
+  "required": [
+    "schema",
+    "run",
+    "summary",
+    "coverage",
+    "findings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "rn-security-audit/1"
+    },
+    "run": {
+      "type": "object",
+      "required": [
+        "target",
+        "date",
+        "mode"
+      ],
+      "properties": {
+        "target": {
+          "type": "string",
+          "description": "Project name. Not an absolute path."
+        },
+        "source_ref": {
+          "type": "string",
+          "description": "Commit hash and whether the worktree was dirty."
+        },
+        "date": {
+          "type": "string",
+          "description": "YYYY-MM-DD"
+        },
+        "mode": {
+          "enum": [
+            "full",
+            "scoped"
+          ]
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Required when mode is scoped."
+        },
+        "profile": {
+          "type": "object",
+          "description": "Free-form project facts: framework, versions, engine."
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 20
+    },
+    "coverage": {
+      "type": "array",
+      "description": "Exactly one entry per domain.",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": [
+          "domain",
+          "status"
+        ],
+        "properties": {
+          "domain": {
+            "$ref": "#/$defs/domain"
+          },
+          "status": {
+            "enum": [
+              "reviewed",
+              "not_applicable",
+              "not_reviewed"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "description": "Required unless status is reviewed."
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "hardening": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "note"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "masvs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/masvs"
+            }
+          },
+          "locations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/location"
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "domain": {
+      "enum": [
+        "secrets",
+        "storage",
+        "crypto",
+        "auth",
+        "network",
+        "platform",
+        "supply-chain",
+        "privacy",
+        "resilience"
+      ]
+    },
+    "masvs": {
+      "type": "string",
+      "pattern": "^MASVS-(STORAGE-[12]|CRYPTO-[12]|AUTH-[123]|NETWORK-[12]|PLATFORM-[123]|CODE-[1234]|RESILIENCE-[1234]|PRIVACY-[1234])$"
+    },
+    "location": {
+      "type": "object",
+      "required": [
+        "file"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "Path relative to the audited project root."
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "verdict",
+        "domain",
+        "locations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^RN-\\d{3}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 8
+        },
+        "verdict": {
+          "enum": [
+            "confirmed",
+            "needs_validation",
+            "rejected"
+          ]
+        },
+        "domain": {
+          "$ref": "#/$defs/domain"
+        },
+        "masvs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/masvs"
+          }
+        },
+        "attacker": {
+          "enum": [
+            "binary-holder",
+            "remote-content",
+            "local-app",
+            "network",
+            "device-access",
+            "compromised-device",
+            "backend-peer",
+            "supply-chain"
+          ]
+        },
+        "locations": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/location"
+          }
+        },
+        "description": {
+          "type": "string",
+          "minLength": 20
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "impact": {
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low",
+            "info"
+          ]
+        },
+        "severity_rationale": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "string"
+        },
+        "fix": {
+          "type": "string"
+        },
+        "blocker": {
+          "type": "string"
+        },
+        "validation_plan": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "verdict": {
+                "const": "confirmed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "masvs",
+              "attacker",
+              "description",
+              "impact",
+              "severity",
+              "severity_rationale",
+              "evidence",
+              "fix"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "blocker"
+                  ]
+                },
+                {
+                  "required": [
+                    "validation_plan"
+                  ]
+                },
+                {
+                  "required": [
+                    "reason"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "verdict": {
+                "const": "needs_validation"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "masvs",
+              "attacker",
+              "description",
+              "blocker",
+              "validation_plan"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "severity"
+                  ]
+                },
+                {
+                  "required": [
+                    "severity_rationale"
+                  ]
+                },
+                {
+                  "required": [
+                    "reason"
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "verdict": {
+                "const": "rejected"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "reason"
+            ],
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "severity"
+                  ]
+                },
+                {
+                  "required": [
+                    "severity_rationale"
+                  ]
+                },
+                {
+                  "required": [
+                    "fix"
+                  ]
+                },
+                {
+                  "required": [
+                    "blocker"
+                  ]
+                },
+                {
+                  "required": [
+                    "validation_plan"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

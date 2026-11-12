@@ -1,0 +1,233 @@
+{
+  "schema": "rn-security-audit/1",
+  "run": {
+    "target": "example-app",
+    "source_ref": "4f2a9c1 (clean)",
+    "date": "2026-01-15",
+    "mode": "full",
+    "profile": {
+      "framework": "expo with committed native projects",
+      "react_native": "0.76.5",
+      "expo": "~52.0.0",
+      "hermes": "enabled"
+    },
+    "limitations": [
+      "The backend API is not in this repository, so server-side authorization could not be examined.",
+      "Dependency advisories were not checked: running npm audit needs network access and was declined."
+    ]
+  },
+  "summary": "The app ships one backend credential that every user can extract, and an invite link adds the signed-in user to any team without asking. Fix those two first; the first needs a key rotation today. Workout history is cached unencrypted and travels in backups. Everything else reviewed held up.",
+  "coverage": [
+    {
+      "domain": "secrets",
+      "status": "reviewed",
+      "note": "All config modules, env files, app.json extra and native resources."
+    },
+    {
+      "domain": "storage",
+      "status": "reviewed"
+    },
+    {
+      "domain": "crypto",
+      "status": "not_applicable",
+      "note": "No application-level cryptography; randomness comes from expo-crypto."
+    },
+    {
+      "domain": "auth",
+      "status": "reviewed"
+    },
+    {
+      "domain": "network",
+      "status": "reviewed"
+    },
+    {
+      "domain": "platform",
+      "status": "reviewed",
+      "note": "Linking config, the single WebView, both native projects."
+    },
+    {
+      "domain": "supply-chain",
+      "status": "reviewed",
+      "note": "Manifests, lockfile, patches, EAS and CI config. No advisory lookup."
+    },
+    {
+      "domain": "privacy",
+      "status": "reviewed"
+    },
+    {
+      "domain": "resilience",
+      "status": "not_reviewed",
+      "note": "Out of scope for this consumer app at the owner's request."
+    }
+  ],
+  "findings": [
+    {
+      "id": "RN-001",
+      "title": "Email provider secret key shipped in the app bundle",
+      "verdict": "confirmed",
+      "domain": "secrets",
+      "masvs": [
+        "MASVS-AUTH-1"
+      ],
+      "attacker": "binary-holder",
+      "locations": [
+        {
+          "file": "src/config/env.ts",
+          "line": 14,
+          "note": "EXPO_PUBLIC_MAILER_SECRET_KEY read into the bundle (value starts SG.x, 69 chars)"
+        },
+        {
+          "file": "src/features/invite/sendInvite.ts",
+          "line": 22,
+          "note": "used as the Bearer token on a direct call to the provider's send API"
+        }
+      ],
+      "description": "The invite feature calls the email provider's send endpoint directly from the app, authenticating with the account's secret key. The key is read from an EXPO_PUBLIC_ variable, which Expo inlines into the JavaScript bundle at build time, so it is present in every released build.",
+      "preconditions": [
+        "Attacker downloads the app from a store and extracts strings from the bundle"
+      ],
+      "impact": "Anyone can send email as the company's verified domain and read the provider account's activity, limited only by the key's scopes. Phishing from the real domain and unbounded sending cost follow directly.",
+      "severity": "critical",
+      "severity_rationale": "No access to any victim device is needed, the credential is a live backend secret for a third-party account, and abuse is trivial once extracted.",
+      "evidence": "Source trace across the two cited files. EXPO_PUBLIC_ inlining is documented build behaviour; the variable is referenced by app code that ships in release.",
+      "fix": "Rotate the key now. Then move sending behind the backend: add an authenticated POST /invites endpoint that holds the key and enforces per-user rate limits, and have sendInvite.ts call that endpoint. Renaming or relocating the variable does not help, because any value the app can read ships with it."
+    },
+    {
+      "id": "RN-002",
+      "title": "Invite deep link joins a team without confirmation",
+      "verdict": "confirmed",
+      "domain": "platform",
+      "masvs": [
+        "MASVS-PLATFORM-1",
+        "MASVS-CODE-4"
+      ],
+      "attacker": "remote-content",
+      "locations": [
+        {
+          "file": "app/invite/[code].tsx",
+          "line": 12,
+          "note": "route reachable as exampleapp://invite/<code>; code read from useLocalSearchParams"
+        },
+        {
+          "file": "app/invite/[code].tsx",
+          "line": 19,
+          "note": "useEffect calls acceptInvite(code) as soon as the screen mounts"
+        },
+        {
+          "file": "src/features/invite/acceptInvite.ts",
+          "line": 8,
+          "note": "POST /invites/accept with the user's session"
+        }
+      ],
+      "description": "Every file under app/ is a deep-linkable route. The invite screen takes the code from the URL and accepts the invitation in an effect on mount, using the signed-in user's session, with no screen asking the user to confirm. A link on any website therefore enrols the victim in a team the attacker controls.",
+      "preconditions": [
+        "Victim is signed in",
+        "Victim taps one link or is redirected by a page they visit"
+      ],
+      "impact": "The victim's account joins the attacker's team, which shares the victim's activity feed and profile with the team owner from then on.",
+      "severity": "high",
+      "severity_rationale": "One tap with no warning performs a state-changing action as the victim and discloses their data. Not critical because it needs that interaction and affects one user per attempt.",
+      "evidence": "Source trace through the three cited lines. There is no confirmation step, and the layout guard only checks that a session exists.",
+      "fix": "Render the invitation (team name, inviter) and call acceptInvite only from an explicit Accept button. Keep the effect for fetching the invitation details, not for accepting it."
+    },
+    {
+      "id": "RN-003",
+      "title": "Workout and heart-rate history cached unencrypted and included in backups",
+      "verdict": "confirmed",
+      "domain": "storage",
+      "masvs": [
+        "MASVS-STORAGE-1",
+        "MASVS-STORAGE-2"
+      ],
+      "attacker": "device-access",
+      "locations": [
+        {
+          "file": "src/db/client.ts",
+          "line": 7,
+          "note": "expo-sqlite database opened without encryption in the documents directory"
+        },
+        {
+          "file": "src/db/sync.ts",
+          "line": 44,
+          "note": "heart-rate samples and GPS routes written to the local tables"
+        },
+        {
+          "file": "app.json",
+          "line": 31,
+          "note": "android.allowBackup not set, so backups are enabled by default"
+        }
+      ],
+      "description": "The offline cache stores heart-rate samples and GPS routes in a plain SQLite file in the app's documents directory. Android backups are enabled and nothing excludes that file, and the iOS documents directory is included in device backups.",
+      "preconditions": [
+        "Attacker obtains a device backup, or has the unlocked device and extraction tooling"
+      ],
+      "impact": "Months of the user's health and location history can be read from a backup or from the device files.",
+      "severity": "medium",
+      "severity_rationale": "Sensitive personal data is recoverable, but only with access to the device or its backups.",
+      "evidence": "Source trace: database setup and the sync writer in the cited files; backup default per Expo config.",
+      "fix": "Open the database with SQLCipher using a key generated on the device and stored with expo-secure-store, and exclude the database from Android backup or set android.allowBackup to false."
+    },
+    {
+      "id": "RN-004",
+      "title": "Removing a team member may rely on a client-side owner check",
+      "verdict": "needs_validation",
+      "domain": "auth",
+      "masvs": [
+        "MASVS-AUTH-1"
+      ],
+      "attacker": "backend-peer",
+      "locations": [
+        {
+          "file": "app/team/[id]/members.tsx",
+          "line": 41,
+          "note": "remove button rendered only when the viewer is the team owner"
+        },
+        {
+          "file": "src/api/teams.ts",
+          "line": 57,
+          "note": "DELETE /teams/:id/members/:userId sent with the normal user token"
+        }
+      ],
+      "description": "The only visible protection on the member-removal call is that the button is hidden for non-owners. The request itself carries an ordinary user token and two ids taken from route params.",
+      "blocker": "Whether the server checks that the caller owns the team on DELETE /teams/:id/members/:userId. The API is not in this repository.",
+      "validation_plan": "In a staging environment, call the endpoint with a non-owner test account's token against a team owned by another test account. Expect 403. Alternatively have the backend owner point to the ownership check in the handler.",
+      "fix": "If the check is missing, derive the caller from the server-side session and verify team ownership in the handler. The client check should stay for display only."
+    },
+    {
+      "id": "RN-005",
+      "title": "Firebase API key in google-services.json reported by the scanner",
+      "verdict": "rejected",
+      "domain": "secrets",
+      "locations": [
+        {
+          "file": "android/app/google-services.json",
+          "line": 18
+        }
+      ],
+      "description": "The scanner flagged a Google API key in the Firebase client configuration file.",
+      "reason": "Firebase client configuration is a public identifier by design and is expected in the app. Access is governed by Firebase rules and key restrictions, which are noted under hardening."
+    }
+  ],
+  "hardening": [
+    {
+      "title": "Restrict the Firebase and Maps API keys",
+      "masvs": [
+        "MASVS-AUTH-1"
+      ],
+      "note": "Confirm in the cloud console that both keys are limited to this app's bundle id and package signature and to the APIs in use.",
+      "locations": [
+        {
+          "file": "android/app/google-services.json",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "title": "Sign over-the-air updates",
+      "masvs": [
+        "MASVS-RESILIENCE-2"
+      ],
+      "note": "expo-updates is enabled without code signing. Adding a code-signing certificate means a compromised update account alone cannot ship code to users."
+    }
+  ]
+}
