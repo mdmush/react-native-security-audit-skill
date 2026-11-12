@@ -1,0 +1,15 @@
+{
+  "name": "react-native-security-audit-skill",
+  "description": "Security audit skill for React Native and Expo apps",
+  "owner": {
+    "name": "mdmush",
+    "url": "https://github.com/mdmush"
+  },
+  "plugins": [
+    {
+      "name": "rn-security-audit",
+      "source": "./",
+      "description": "Audit React Native and Expo apps for real, evidence-backed security issues, mapped to OWASP MASVS v2."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "rn-security-audit",
+  "displayName": "React Native Security Audit",
+  "version": "1.0.0",
+  "description": "Security audit skill for React Native and Expo apps: evidence-based findings, OWASP MASVS v2 mapping, a read-only scanner and a validated report.",
+  "author": {
+    "name": "mdmush",
+    "url": "https://github.com/mdmush"
+  },
+  "homepage": "https://github.com/mdmush/react-native-security-audit-skill",
+  "repository": "https://github.com/mdmush/react-native-security-audit-skill",
+  "license": "MIT",
+  "keywords": ["react-native", "expo", "security", "audit", "owasp", "masvs", "mobile"]
+}
