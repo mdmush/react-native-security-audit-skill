@@ -236,6 +236,20 @@ claude plugin eval . --scaffold --allow-tools Write,Edit,Bash   # run evals/ wit
 
 `evals/` holds three cases: a full audit of a fixture app with planted vulnerabilities and decoys, a focused question that must not trigger the full workflow, and an Expo key review that must tell a real secret from public identifiers. The fixture credentials are invented formats, not real provider keys.
 
+### Releases
+
+Releases are automatic. Every push to `main` runs `.github/workflows/release.yml`, which releases only when the push changed what users install (`skills/` or `.claude-plugin/`). The size of the version bump comes from the commit messages, using [Conventional Commits](https://www.conventionalcommits.org):
+
+| Commit message | Bump | Use for |
+|---|---|---|
+| `feat!: ...`, or `BREAKING CHANGE:` in the body | major | A change that breaks existing use: `findings.json` format, script options, skill or plugin name |
+| `feat: ...` | minor | A new capability: scanner rule, reference file, audit domain, report section |
+| `fix: ...`, or any other message | patch | Corrections, wording, rule tuning |
+
+The workflow runs the tests, updates the version in `package.json`, `.claude-plugin/plugin.json` and the skill's `metadata.version`, commits that as `chore(release): vX.Y.Z`, tags it and publishes a GitHub release with notes built from the commits. Changes to the README, tests, evals or CI alone do not release.
+
+Preview what the next push would do with `node tools/release.mjs --dry-run`.
+
 Contributions are welcome, particularly new scanner rules with a triage line and a test, and corrections to the reference files as React Native, Expo and the platforms change.
 
 ## Acknowledgements

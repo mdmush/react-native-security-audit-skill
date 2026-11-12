@@ -1,0 +1,56 @@
+name: Release
+
+# Runs on every push to main. If the push changed what users install
+# (skills/ or .claude-plugin/), it bumps the version from the commit messages,
+# commits the bump, tags it and publishes a GitHub release.
+# See tools/release.mjs for the rules.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history and tags, needed to find the last release
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test
+        run: npm test
+
+      - name: Plan release and bump version
+        id: plan
+        run: node tools/release.mjs --notes "$RUNNER_TEMP/release-notes.md"
+
+      - name: Test bumped version
+        if: steps.plan.outputs.release == 'true'
+        run: npm test
+
+      - name: Commit, tag and publish
+        if: steps.plan.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.plan.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet; then
+            git commit -am "chore(release): v$VERSION"
+            git push origin HEAD:main
+          fi
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+          gh release create "v$VERSION" --title "v$VERSION" --notes-file "$RUNNER_TEMP/release-notes.md"
