@@ -1,0 +1,10 @@
+schema_version: "1.1"
+name: focused-token-storage-question
+expected_outcome: |
+  A direct answer in the conversation, with no audit workflow and no files
+  written. It says the practice is a real weakness but not critical: the data is
+  plaintext and reachable by someone with the device or its backups (and on a
+  rooted or jailbroken device), not by other apps or remote attackers. It rates it
+  around medium given the 60-day refresh token, and recommends moving the tokens
+  to expo-secure-store (Keychain/Keystore) and excluding them from the persisted
+  slice, with a note on Android backup settings.

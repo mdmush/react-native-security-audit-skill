@@ -1,0 +1,40 @@
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+def enableProguardInReleaseBuilds = false
+
+android {
+    namespace "com.shopmate"
+    defaultConfig {
+        applicationId "com.shopmate"
+        minSdkVersion 24
+        targetSdkVersion 35
+        versionCode 340
+        versionName "3.4.0"
+    }
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+        release {
+            storeFile file(SHOPMATE_UPLOAD_STORE_FILE)
+            storePassword SHOPMATE_UPLOAD_STORE_PASSWORD
+            keyAlias SHOPMATE_UPLOAD_KEY_ALIAS
+            keyPassword SHOPMATE_UPLOAD_KEY_PASSWORD
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
+    }
+}

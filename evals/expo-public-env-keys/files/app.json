@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "TableMate",
+    "slug": "tablemate",
+    "scheme": "tablemate",
+    "version": "1.2.0",
+    "android": { "package": "app.tablemate", "allowBackup": false },
+    "ios": { "bundleIdentifier": "app.tablemate" },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "extra": { "eas": { "projectId": "0b6f2f0e-5f0a-4f0e-9a51-3f1b2c7d8e90" } }
+  }
+}

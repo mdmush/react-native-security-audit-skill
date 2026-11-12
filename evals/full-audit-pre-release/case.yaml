@@ -1,0 +1,17 @@
+schema_version: "1.1"
+name: full-audit-pre-release
+context:
+  scaffold_script: place-files.sh
+expected_outcome: |
+  A full audit of the ShopMate fixture app that writes findings.json and REPORT.md
+  to ./audit-output. The planted issues are reported as confirmed findings with a
+  named attacker and an impact-based severity: the PayBridge server secret shipped
+  in the bundle, the shopmate://portal deep link that loads any URL into a WebView
+  holding the session token and a refund bridge, the trust-all TLS client installed
+  for all builds, tokens persisted in plaintext via redux-persist, and the OAuth
+  flow without PKCE that also ships a client secret. Server-side unknowns (the
+  admin cancel endpoint) are needs_validation, not confirmed. Decoys are not
+  reported as vulnerabilities: the debug manifest's cleartext flag, Math.random in
+  the skeleton list, the test file's fake token, the publishable key and Sentry
+  DSN, and the authPromptDismissed flag. No secret value appears in full anywhere
+  in the output.
